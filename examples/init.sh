@@ -45,8 +45,22 @@ case $action in
     $CMD
     ;;
   upgrade)
-    if sig USR2 && sleep 2 && sig 0 && oldsig QUIT
+    if sig USR2
     then
+      printf 'Waiting for new workers'
+      n=$TIMEOUT
+      while (! (test -s $PID && ps --no-headers --ppid `cat $PID` > /dev/null)) && test $n -ge 0
+      do
+        printf '.' && sleep 1 && n=$(( $n - 1 ))
+      done
+      if test ! -s $old_pid
+      then
+        echo
+        echo >&2 'New workers failed to start; see error log'
+        exit 1
+      fi
+
+      printf '\nStopping old master' && oldsig QUIT
       n=$TIMEOUT
       while test -s $old_pid && test $n -ge 0
       do
